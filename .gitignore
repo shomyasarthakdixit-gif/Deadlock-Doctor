@@ -1,0 +1,26 @@
+# Object files
+*.o
+
+# Executables
+deadlockdoctor
+*.out
+
+# Core dumps
+core
+core.*
+
+# Build directories
+build/
+
+# Debugging
+*.dSYM/
+
+# Editor files
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
