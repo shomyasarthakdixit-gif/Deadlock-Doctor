@@ -48,8 +48,8 @@ Responsible for:
 
 Primary files:
 
-- src/process.c
-- include/process.h
+- src/process_manager.c
+- include/process_manager.h
 
 ### Scheduler
 
