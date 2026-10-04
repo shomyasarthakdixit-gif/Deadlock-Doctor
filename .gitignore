@@ -24,3 +24,7 @@ build/
 
 # Temporary files
 *.tmp
+
+# Test executables
+tests/test_synchronization
+tests/test_recovery
