@@ -6,6 +6,8 @@ CPPFLAGS = -Iinclude
 TARGET = deadlockdoctor
 
 SRC = src/main.c \
+      src/process_manager.c \
+      src/scheduler.c \
       src/resource_manager.c \
       src/deadlock_detector.c
 
