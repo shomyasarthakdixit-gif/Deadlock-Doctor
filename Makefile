@@ -6,6 +6,7 @@ CPPFLAGS = -Iinclude -D_POSIX_C_SOURCE=200809L
 TARGET = deadlockdoctor
 
 SRC = src/main.c \
+      src/cli.c \
       src/process_manager.c \
       src/scheduler.c \
       src/resource_manager.c \
@@ -15,13 +16,15 @@ SRC = src/main.c \
 
 OBJ = $(SRC:.c=.o)
 
-SYNC_TEST = tests/test_synchronization
-RECOVERY_TEST = tests/test_recovery
+TEST_TARGETS = \
+	tests/test_process_manager \
+	tests/test_scheduler_fcfs \
+	tests/test_scheduler_fcfs_edge \
+	tests/test_scheduler_rr \
+	tests/test_synchronization \
+	tests/test_recovery
 
-SYNC_TEST_OBJ = tests/test_synchronization.o
-RECOVERY_TEST_OBJ = tests/test_recovery.o
-
-.PHONY: all test test-sync test-recovery clean
+.PHONY: all test clean
 
 all: $(TARGET)
 
@@ -31,30 +34,47 @@ $(TARGET): $(OBJ)
 %.o: %.c
 	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
-test: test-sync test-recovery
+test: $(TEST_TARGETS)
+	@for test in $(TEST_TARGETS); do \
+		echo ""; \
+		echo "========================================"; \
+		echo "Running $$test"; \
+		echo "========================================"; \
+		./$$test || exit 1; \
+	done
 
-test-sync: $(SYNC_TEST)
-	./$(SYNC_TEST)
-
-$(SYNC_TEST): $(SYNC_TEST_OBJ) src/synchronization.o
+tests/test_process_manager: tests/test_process_manager.o \
+                            src/process_manager.o
 	$(CC) $(CFLAGS) $^ -o $@
 
-test-recovery: $(RECOVERY_TEST)
-	./$(RECOVERY_TEST)
+tests/test_scheduler_fcfs: tests/test_scheduler_fcfs.o \
+                           src/process_manager.o \
+                           src/scheduler.o
+	$(CC) $(CFLAGS) $^ -o $@
 
-$(RECOVERY_TEST): $(RECOVERY_TEST_OBJ) \
-                  src/process_manager.o \
-                  src/resource_manager.o \
-                  src/deadlock_detector.o \
-                  src/recovery.o
+tests/test_scheduler_fcfs_edge: tests/test_scheduler_fcfs_edge.o \
+                                src/process_manager.o \
+                                src/scheduler.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+tests/test_scheduler_rr: tests/test_scheduler_rr.o \
+                         src/process_manager.o \
+                         src/scheduler.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+tests/test_synchronization: tests/test_synchronization.o \
+                            src/synchronization.o
+	$(CC) $(CFLAGS) $^ -o $@
+
+tests/test_recovery: tests/test_recovery.o \
+                     src/process_manager.o \
+                     src/resource_manager.o \
+                     src/deadlock_detector.o \
+                     src/recovery.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 clean:
 	rm -f $(OBJ) \
-	      $(SYNC_TEST_OBJ) \
-	      $(RECOVERY_TEST_OBJ) \
+	      tests/*.o \
 	      $(TARGET) \
-	      $(SYNC_TEST) \
-	      $(RECOVERY_TEST)
-
-.PHONY: all test test-sync test-recovery clean
+	      $(TEST_TARGETS)

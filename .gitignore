@@ -4,27 +4,24 @@
 # Executables
 deadlockdoctor
 *.out
-
 # Core dumps
 core
 core.*
-
 # Build directories
 build/
-
 # Debugging
 *.dSYM/
-
 # Editor files
 .vscode/
 .idea/
-
 # Logs
 *.log
-
 # Temporary files
 *.tmp
-
 # Test executables
 tests/test_synchronization
 tests/test_recovery
+tests/test_process_manager
+tests/test_scheduler_fcfs
+tests/test_scheduler_fcfs_edge
+tests/test_scheduler_rr

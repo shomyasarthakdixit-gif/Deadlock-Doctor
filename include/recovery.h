@@ -21,6 +21,14 @@ int recovery_select_victim(const ProcessManager *pm,
                            const ResourceManager *rm,
                            const DeadlockReport *report);
 
+/*
+ * Try to satisfy currently pending requests of WAITING processes.
+ * Processes whose outstanding requests are completely satisfied
+ * are moved from WAITING to READY.
+ */
+int recovery_wake_waiting_processes(ProcessManager *pm,
+                                     ResourceManager *rm);
+
 /* Perform deadlock recovery and verify the resulting state. */
 int recovery_execute(ProcessManager *pm,
                      ResourceManager *rm,

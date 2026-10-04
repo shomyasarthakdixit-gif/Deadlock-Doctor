@@ -27,25 +27,26 @@ static int process_has_pending_requests(const ResourceManager *rm,
     return 0;
 }
 
-static int wake_waiting_processes(ProcessManager *pm,
-                                  ResourceManager *rm,
-                                  int victim_pid)
+int recovery_wake_waiting_processes(ProcessManager *pm,
+                                    ResourceManager *rm)
 {
+    if (pm == NULL || rm == NULL) {
+        return -1;
+    }
+
     int awakened = 0;
 
     for (int pid = 0; pid < MAX_PROCESSES; ++pid) {
         Process *process = pm_get_process(pm, pid);
 
         if (process == NULL ||
-            pid == victim_pid ||
             process->state != PROCESS_WAITING) {
             continue;
         }
 
         /*
-         * Only submit a recorded request when enough instances
-         * are currently available. This avoids adding the same
-         * waiting request twice inside rm_request_resource().
+         * Try to satisfy each currently outstanding request
+         * when sufficient instances are available.
          */
         for (int r = 0; r < rm->resource_count; ++r) {
             int requested = rm->request[pid][r];
@@ -64,6 +65,10 @@ static int wake_waiting_processes(ProcessManager *pm,
                                 requested);
         }
 
+        /*
+         * Only move the process back to READY when all of its
+         * pending resource requests have been satisfied.
+         */
         if (!process_has_pending_requests(rm, pid)) {
             if (pm_set_state(pm,
                              pid,
@@ -89,6 +94,12 @@ int recovery_select_victim(const ProcessManager *pm,
     int best_pid = -1;
     int best_allocation = -1;
 
+    /*
+     * Recovery policy:
+     * 1. Select the deadlocked process holding the largest
+     *    number of resource instances.
+     * 2. On a tie, select the lowest PID.
+     */
     for (int i = 0;
          i < report->deadlocked_process_count;
          ++i) {
@@ -102,12 +113,6 @@ int recovery_select_victim(const ProcessManager *pm,
         int allocation =
             process_allocation_total(rm, pid);
 
-        /*
-         * Policy:
-         * 1. Select the process holding the largest number
-         *    of resource instances.
-         * 2. If tied, select the lowest PID.
-         */
         if (allocation > best_allocation ||
             (allocation == best_allocation &&
              (best_pid < 0 || pid < best_pid))) {
@@ -151,7 +156,7 @@ int recovery_execute(ProcessManager *pm,
     recovery_report->victim_pid = victim;
 
     /*
-     * Cancel the victim's outstanding requests first.
+     * Cancel the victim's outstanding requests.
      * The process is going to be terminated.
      */
     for (int r = 0; r < rm->resource_count; ++r) {
@@ -179,7 +184,7 @@ int recovery_execute(ProcessManager *pm,
     }
 
     /*
-     * Terminate the selected victim.
+     * Terminate the victim process.
      */
     Process *victim_process =
         pm_get_process(pm, victim);
@@ -193,14 +198,14 @@ int recovery_execute(ProcessManager *pm,
     }
 
     /*
-     * Resources released by the victim may satisfy waiting
-     * processes.
+     * Try to satisfy waiting processes using the released
+     * resources.
      */
     recovery_report->awakened_processes =
-        wake_waiting_processes(pm, rm, victim);
+        recovery_wake_waiting_processes(pm, rm);
 
     /*
-     * Verify whether the deadlock has actually disappeared.
+     * Verify recovery.
      */
     DeadlockReport after_recovery;
 
@@ -231,19 +236,19 @@ void recovery_print_report(const ResourceManager *rm,
         return;
     }
 
-    printf("Selected victim       : P%d\n",
+    printf("Selected victim          : P%d\n",
            report->victim_pid);
 
-    printf("Resource types freed   : %d\n",
+    printf("Resource types released  : %d\n",
            report->released_resource_types);
 
-    printf("Resource instances freed: %d\n",
+    printf("Resource instances freed : %d\n",
            report->released_instances);
 
-    printf("Processes awakened     : %d\n",
+    printf("Processes awakened       : %d\n",
            report->awakened_processes);
 
-    printf("\nRecovery result        : %s\n",
+    printf("\nRecovery result          : %s\n",
            report->recovered
                ? "SYSTEM RECOVERED"
                : "DEADLOCK STILL EXISTS");
